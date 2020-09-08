@@ -15,5 +15,6 @@ kubectl logs webapp-1
 * container: simple-webapp
 
 ```
+kubectl logs webapp-2 -c (will print the name of the existing containers)
 kubectl logs webapp-2 simple-webapp
 ```
