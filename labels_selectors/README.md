@@ -5,7 +5,14 @@ https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selector
 ## 1. We have deployed a number of PODs. They are labelled with 'tier', 'env' and 'bu'. How many PODs exist in the 'dev' environment? Use selectors to filter the output
 
 ```
+kubectl get pods --show-labels
 kubectl get pods --selector env=dev | tail -n +2 | wc -l
+```
+
+other option:
+
+```
+kubectl get pods -l env=dev --no-headers | wc -l
 ```
 
 ## 2. How many PODs are in the 'finance' business unit ('bu')?
