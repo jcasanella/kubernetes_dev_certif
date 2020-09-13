@@ -15,6 +15,8 @@ https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
 2. Run the command: `kubectl set image deployment/my-app nginx-container=nginx:1.12-perl`
 
 * Rollback a change: `kubectl rollout undo deployment/my-app`
+  
+  ![alt text](image/deployments.png "Hierarchy Resources")
 
 ## 1. We have deployed a simple web application. Inspect the PODs and the Services
 
