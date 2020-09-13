@@ -2,6 +2,11 @@
 
 https://kubernetes.io/docs/tasks/configure-pod-container/assign-cpu-resource/
 
+A **deployment** is a high level construct, allows scaling, rolling updates, rollbacks. Multiple deployments can be used together to implement a *canary deployment*. Delegate pods management to **ReplicaSets**
+
+A **ReplicaSet** is a low-level construct. Makes sure that a given number of identical pods are running. Allow scaling.
+
+
 ## 1. A pod named 'rabbit' is deployed. Identify the CPU requirements set on the Pod
 
 ```

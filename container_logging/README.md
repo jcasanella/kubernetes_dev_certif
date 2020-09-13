@@ -1,6 +1,12 @@
 # Container Logging
 
 https://kubernetes.io/docs/concepts/cluster-administration/logging/
+https://kubernetes.io/docs/tasks/debug-application-cluster/
+
+Some extra commands:
+
+* Show last line from the logs and continue showing in real time logs: `kubectl logs webapp-1 --tail 1 -f`
+* Show in real time logs: `kubectl logs webapp-1 -f`
 
 ## 1. We have deployed a POD hosting an application. Check the logs of the pod
 
