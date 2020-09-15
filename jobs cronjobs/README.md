@@ -163,3 +163,9 @@ spec:
 Other option `kubectl create cronjob throw-dice-cron-job --image kodekloud/throw-dice --schedule "30 21 * * *" --dry-run=client -o yaml > output2.yaml`
 
 Create the job: `kubectl create -f output2.yaml` and check the cronjob `kubectl get cronjobs`
+
+We can do the same using run command: (deprecated, better to use `kubectl create`)
+
+```
+kubectl run throw-dice-cron-job --schedule="30 21 * * *" --restart=OnFailure --image=kodekloud/throw-dice
+```
