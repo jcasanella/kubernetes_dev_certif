@@ -2,6 +2,17 @@
 
 https://kubernetes.io/docs/concepts/services-networking/service/
 
+We use `kubectl expose` to create a service for existing pods. Services allows us to connect into these pods. Once a service is created, CoreDNS will allow us to resolve by name. There're different types of services:
+
+* **ClusterIP**: It's the default.  A virtual IP address is allocated for the service, this IP address is reachable only from within the cluster. Our code can connect to the Pod using the original port number.
+* **NodePort**: A port is allocated for the service (by default, in the range 30000-32768) That port is made available on all your nodes and anybody can connect to it. Our code must be changed to connect to that new port.
+* **LoadBalancer**: an external load balancer is allocated for the service. Like AWS, Azure, GCE, OpenStack...
+* **ExternalName**: The DNS entry managed by CoreDNS will just be a `CNAME` to a provided record. No port, no IP address, no nothing else is allocated.
+
+Under the hood is using kube-proxy.
+
+Remember CoreDNS is part of the control pane.
+
 ## 1. How many Services exist on the system? In the current default namespace.
 
 ```
