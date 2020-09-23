@@ -3,6 +3,15 @@
 https://blog.container-solutions.com/kubernetes-deployment-strategies
 https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
 
+Deployments provide declarative updates for pods and replica sets. You can easily achieve the following functionality using deployment:
+
+* Start a replication controller or replica set.
+* Check the status of deployment.
+* Update deployment to use a new image, without any outages.
+* Roll back deployment to an earlier revision.
+
+Basic commands:
+
 * How to check if something exists: `kubectl get all`
 * Create a deployment: `kubectl create -f deployment_file.yaml`
 * Check status deployment: `kubectl rollout status deployment/my-app` - rollout is the process to create a deployment in the back end.
