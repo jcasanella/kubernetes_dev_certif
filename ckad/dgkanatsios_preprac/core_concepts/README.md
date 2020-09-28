@@ -112,3 +112,92 @@ spec:
     memory: 1G
     pods: "2"
 ```
+
+## 7. Get pods on all namespaces
+
+```
+kubectl get pods --all-namespaces
+```
+
+## 8. Create a pod with image nginx called nginx and expose traffic on port 80
+
+```
+kubectl run nginx --image=nginx --port=80
+```
+
+## 9. Change pod's image to nginx:1.7.1. Observe that the container will be restarted as soon as the image gets pulled
+
+```
+kubectl get pods
+kubectl edit pod nginx
+```
+
+Replace `image: nginx` for `image: nginx:1.7.1`
+
+```
+kubectl describe pod nginx 
+```
+
+## 10. Get nginx pod's ip created in previous step, use a temp busybox image to wget its '/'
+
+```
+kubectl get po -o wide                  # this will give you the ip of the pod
+kubectl run busybox --image=busybox --rm -it --restart=Never -- wget -O- 10.1.1.131:80
+```
+
+**Note**: wget -O- what is doing is ` -O FILE         Save to FILE ('-' for stdout)`
+
+## 11. Get pod's YAML
+
+```
+kubectl get pod nginx -o yaml
+```
+
+## 12. Get information about the pod, including details about potential issues (e.g. pod hasn't started)
+
+```
+kubectl describe pod nginx
+```
+
+## 13. Get pod logs
+
+```
+kubectl logs -h                     # to get some help
+kubectl logs nginx
+```
+
+## 14. If pod crashed and restarted, get logs about the previous instance
+
+If we check the help from logs, `kubectl logs -h` will see which parameter we need to use
+
+```
+kubectl logs -p=true nginx
+```
+
+## 15. Execute a simple shell on the nginx pod
+
+```
+kubectl exec -it nginx -- bash 
+```
+
+## 16. Create a busybox pod that echoes 'hello world' and then exits
+
+**Note**: if u dont remember how to create a temporal pod, check the documentation `kubectl run -h`
+
+```
+kubectl run busybox --image busybox -it --restart=Never -- echo "hello world"
+```
+
+## 17. Do the same, but have the pod deleted automatically when it's completed
+
+```
+kubectl run busybox --image busybox --rm -it --restart=Never -- echo "hello world"
+```
+
+## 18. Create an nginx pod and set an env value as 'var1=val1'. Check the env value existence within the pod
+
+```
+kubectl run nginx --image=nginx --env="var1=val1"
+kubectl exec -t nginx -- env  
+kubectl exec -t nginx -- sh -c 'echo ${var1}'        
+```
