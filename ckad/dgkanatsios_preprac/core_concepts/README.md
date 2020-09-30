@@ -12,6 +12,16 @@ References:
 
 * kubernetes > Documentation > Tasks > Access Applications in a Cluster > [Use Port Forwarding to Access Applications in a Cluster](https://kubernetes.io/docs/tasks/access-application-cluster/port-forward-access-application-cluster/)
 
+## Some theory
+
+The main components are running in the `kube-system` namespace
+
+* **kubernetes proxy**: responsible for routing network traffic to load-balanced services in the Kubernetes cluster must be present on every node in the cluster.
+
+* **kubernetes dns**: runs a DNS server, which provides naming and discovery for the services that are defined in the cluster
+
+* **Kubernetes UI**: The UI is run as a single replica, but it is still managed by a Kubernetes deployment for reliability and upgrades
+
 ## Exercises
 
 ### 1. Create a namespace called 'mynamespace' and a pod with image nginx called nginx on this namespace
