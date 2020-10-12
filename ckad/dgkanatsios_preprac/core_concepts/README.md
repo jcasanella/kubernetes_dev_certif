@@ -63,6 +63,8 @@ kubectl run busybox --image=busybox -- env
 kubectl logs busybox
 ```
 
+**Note**: `kubectl logs -f pood_name` will continuosly streaming logs. Adding the `--previous` flag will get logs from a previous instance of the container.
+
 ## 4. Create a busybox pod (using YAML) that runs the command "env". Run it and see the output
 
 ```
