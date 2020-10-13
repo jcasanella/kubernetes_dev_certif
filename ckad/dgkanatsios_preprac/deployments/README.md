@@ -1,6 +1,7 @@
 # Deployments
 
 https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
+https://kubernetes.io/blog/2016/07/autoscaling-in-kubernetes/
 
 ## 1. Create a deployment with image nginx:1.7.8, called nginx, having 2 replicas, defining port 80 as the port that this container exposes (don't create a service for this deployment)
 
@@ -84,3 +85,70 @@ kubectl get pods -l app=nginx
 ```
 
 ## 11. Return the deployment to the second revision (number 2) and verify the image is nginx:1.7.9
+
+```
+kubectl rollout undo deploy nginx --to-revision=2
+kubectl describe deploy nginx | grep Image:
+kubectl rollout status deploy nginx
+```
+
+## 12. Check the details of the fourth revision (number 4)
+
+```
+kubectl rollout history deploy nginx --revision=4
+```
+
+## 13. Scale the deployment to 5 replicas
+
+Look first `replicas` entry:
+
+```
+kubectl edit deployment nginx
+```
+
+other option:
+
+```
+kubectl scale deploy nginx --replicas=5
+kubectl get pods -l app=nginx
+```
+
+## 14. Autoscale the deployment, pods between 5 and 10, targetting CPU utilization at 80%
+
+```
+kubectl autoscale deployment nginx --cpu-percent=80 --min=5 --max=10
+```
+
+## 15. Pause the rollout of the deployment
+
+```
+kubectl rollout pause deployment nginx
+```
+
+## 16. Update the image to nginx:1.9.1 and check that there's nothing going on, since we paused the rollout
+
+```
+kubectl edit deployment nginx
+kubectl rollout history deploy nginx 
+```
+
+We can appreciate no new revision
+
+## 17. Resume the rollout and check that the nginx:1.9.1 image has been applied
+
+```
+kubectl rollout resume deployment nginx
+kubectl rollout history deploy nginx 
+```
+
+After resume the deployment we have a new revision
+
+## 18. Delete the deployment and the horizontal pod autoscaler you created
+
+```
+kubectl delete deploy nginx
+kubectl get deploymeents  
+kubectl get deployments
+kubectl get pods  
+kubectl get rs 
+```
