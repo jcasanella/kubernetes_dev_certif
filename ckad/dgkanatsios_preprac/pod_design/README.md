@@ -7,6 +7,70 @@ https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
 
 You can use Kubernetes annotations to attach arbitrary non-identifying metadata to objects. Clients such as tools and libraries can retrieve this metadata
 
+**Resources**:
+
+Resources are requested per container, not per Pod. The total
+resources requested by the Pod is the sum of all resources requested
+by all containers in the Pod. The reason for this is that in many
+cases the different containers have very different CPU requirements.
+For example, in the web server and data synchronizer Pod,
+the web server is user-facing and likely needs a great deal of CPU,
+while the data synchronizer can make do with very little.
+
+With Kubernetes, a Pod requests the resources required to run its containers. Kubernetes
+guarantees that these resources are available to the Pod. The most commonly requested resources are CPU and memory, but Kubernetes has support for other
+resource types as well, such as GPUs and more
+
+```
+apiVersion: v1
+  kind: Pod
+metadata:
+  name: kuard
+spec:
+  containers:
+  - image: gcr.io/kuar-demo/kuard-amd64:blue
+    name: kuard
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "128Mi"
+    ports:
+    - containerPort: 8080
+      name: http
+      protocol: TCP
+```
+
+The Kubernetes scheduler will
+ensure that the sum of all requests of all Pods on a node does not exceed the capacity
+of the node. Therefore, a Pod is guaranteed to have at least the requested resources
+when running on the node.
+
+In addition to setting the resources required by a Pod, which establishes the minimum
+resources available to the Pod, you can also set a maximum on a Pod’s resource
+usage via resource limits.
+
+```
+apiVersion: v1
+  kind: Pod
+metadata:
+  name: kuard
+spec:
+  containers:
+  - image: gcr.io/kuar-demo/kuard-amd64:blue
+    name: kuard
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "128Mi"
+      limits:
+        cpu: "1000m"
+        memory: "256Mi"
+    ports:
+    - containerPort: 8080
+      name: http
+      protocol: TCP
+```
+
 ## Exercises
 
 ## 1. Create 3 pods with names nginx1,nginx2,nginx3. All of them should have the label app=v1
