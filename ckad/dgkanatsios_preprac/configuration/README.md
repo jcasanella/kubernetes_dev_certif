@@ -78,9 +78,10 @@ kubectl exec -it nginx -- env | grep option
 
 ### 7. Create a configMap 'anotherone' with values 'var6=val6', 'var7=val7'. Load this configMap as env variables into a new nginx pod
 
-
+```
 kubectl create cm anotherone --from-literal=var6=val6 --from-literal=var7=val7
 kubectl run nginx --image=nginx --dry-run=client -o yaml > output.yaml
+```
 
 edit outputfile and add the section `envFrom`
 
@@ -109,3 +110,37 @@ kubectl create -f output.yaml
 kubectl exec -it nginx -- env
 
 ### 8. Create a configMap 'cmvolume' with values 'var8=val8', 'var9=val9'. Load this as a volume inside an nginx pod on path '/etc/lala'. Create the pod and 'ls' into the '/etc/lala' directory.
+
+```
+kubectl create cm cmvolume --from-literal=var8=val8 --from-literal=var9=val9
+kubectl run nginx --image=nginx --dry-run=client -o yaml > output.yaml
+```
+
+Add the `volumes` section and `volumeMounts`
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+spec:
+  volumes: # add a volumes list
+  - name: myvolume # just a name, you'll reference this in the pods
+    configMap:
+      name: cmvolume # name of your configmap
+  containers:
+  - image: nginx
+    imagePullPolicy: IfNotPresent
+    name: nginx
+    resources: {}
+    volumeMounts: # your volume mounts are listed here
+    - name: myvolume # the name that you specified in pod.spec.volumes.name
+      mountPath: /etc/lala # the path inside your container
+  restartPolicy: Never
+```
+```
+kubectl apply -f output.yaml
+kubectl describe pod nginx
+kubectl logs nginx
+kubectl exec -it nginx -- ls /etc/lala
+```
