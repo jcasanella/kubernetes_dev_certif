@@ -144,3 +144,93 @@ kubectl describe pod nginx
 kubectl logs nginx
 kubectl exec -it nginx -- ls /etc/lala
 ```
+
+## Security Context
+
+https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+
+### 1. Create the YAML for an nginx pod that runs with the user ID 101. No need to create the pod
+
+```
+kubectl run nginx --image=nginx --dry-run=client -o yaml > output.yaml
+```
+
+Edit the output to add `securityContext:`
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: nginx
+  name: nginx
+spec:
+  securityContext:
+    runAsUser: 101
+  containers:
+  - image: nginx
+    name: nginx
+    resources: {}
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: {}
+```
+
+### 2. Create the YAML for an nginx pod that has the capabilities "NET_ADMIN", "SYS_TIME" added on its single container
+
+```
+kubectl run nginx --image=nginx --dry-run=client -o yaml > output.yaml
+```
+
+Edit the output.yaml to add the `securityContext:` section
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: nginx
+  name: nginx
+spec:
+  securityContext:
+    capabilities:
+      add: ["NET_ADMIN", "SYS_TIME"]
+  containers:
+  - image: nginx
+    name: nginx
+    resources: {}
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: {}
+```
+
+## Requests and Limits
+
+https://kubernetes.io/docs/tasks/configure-pod-container/assign-cpu-resource/
+https://kubernetes.io/docs/tasks/configure-pod-container/assign-memory-resource/
+
+### 1. Create an nginx pod with requests cpu=100m,memory=256Mi and limits cpu=200m,memory=512Mi
+
+```
+kubectl run nginx --image=nginx --restart=Never --requests='cpu=100m,memory=256Mi' --limits='cpu=200m,memory=512Mi'
+```
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    resources:
+      limits:
+        memory: 512Mi
+        cpu: 200m
+      requests:
+        memory: 256Mi
+        cpu: 100m
+```
