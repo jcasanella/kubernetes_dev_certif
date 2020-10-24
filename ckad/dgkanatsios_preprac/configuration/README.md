@@ -234,3 +234,32 @@ spec:
         memory: 256Mi
         cpu: 100m
 ```
+
+## Secrets
+
+https://kubernetes.io/docs/concepts/configuration/secret/
+https://kubernetes.io/docs/tasks/configmap-secret/managing-secret-using-kubectl/
+
+### 1. Create a secret called mysecret with the values password=mypass
+
+```
+kubectl create secret generic mysecret --from-literal=password=mypass
+kubectl get secrets
+```
+
+### 2. Create a secret called mysecret2 that gets key/value from a file
+
+```
+echo -n 'admin' > ./username.txt
+kubectl create secret generic mysecret2 --from-file=username.txt
+kubectl get secrets
+```
+
+### 3. Get the value of mysecret2
+
+```
+kubectl get secret mysecret2 -o jsonpath='{.data}' # return something like map[username.txt:YWRtaW4=]
+echo 'YWRtaW4=' | base64 --decode
+```
+
+### 4. Create an nginx pod that mounts the secret mysecret2 in a volume on path /etc/foo
