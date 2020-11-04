@@ -3,6 +3,7 @@
 https://kubernetes.io/docs/concepts/services-networking/
 https://kubernetes.io/docs/concepts/services-networking/service/
 https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
+https://kubernetes.io/docs/concepts/services-networking/network-policies/
 
 **ClusterIP** : Exposes the Service on a cluster-internal IP. Choosing this value makes the Service only reachable from within the cluster. This is the default ServiceType. 
 
@@ -148,3 +149,39 @@ kubectl get deployments
 ```
 
 ## 9. Create an nginx deployment of 2 replicas, expose it via a ClusterIP service on port 80. Create a NetworkPolicy so that only pods with labels 'access: granted' can access the deployment and apply it
+
+```
+kubectl create deployment nginx --image=nginx --replicas=2
+kubectl expose deployment nginx --port 80
+```
+
+**Note**:  the previous cmd creates a service, if we do from create deployment does not create the svc
+
+Create the policy:
+
+```
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: access-nginx # pick a name
+spec:
+  podSelector:
+    matchLabels:
+      run: nginx # selector for the pods
+  ingress: # allow ingress traffic
+  - from:
+    - podSelector: # from pods
+        matchLabels: # with this label
+          access: granted
+```
+
+```
+kubectl apply -f policy.yaml
+```
+
+Lets check if it works
+
+```
+kubectl run busybox --image=busybox --rm -it --restart=Never -- wget -O- http://nginx:80 --timeout 2 
+kubectl run busybox --image=busybox --rm -it --restart=Never --labels=access=granted -- wget -O- http://nginx:80 --timeout 2  # This should be fine
+```
