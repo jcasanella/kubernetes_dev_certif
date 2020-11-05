@@ -192,3 +192,11 @@ If the file doesn't show on the second pod but it shows on the first, it has mos
 they are on different nodes, you won't see the file, because we used the hostPath volume type. If you need to access the same files in a multi-node cluster, you need a volume type that is independent of a specific node. There are lots of different types per cloud provider 
 
 ## 6. Create a busybox pod with 'sleep 3600' as arguments. Copy '/etc/passwd' from the pod to your local folder
+
+```
+kubectl run busybox --image=busybox -- /bin/sh -c 'sleep 3600'
+kubectl cp default/busybox:/etc/passwd passwd
+ls passwd
+```
+
+The kubectl cp can gives the following error: `tar: removing leading '/' from member names`, check if the file has been copied to ignore this error.
