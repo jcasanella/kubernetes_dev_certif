@@ -147,3 +147,48 @@ cp /etc/passwd /etc/foo/.
 ```
 
 ## 5. Create a second pod which is identical with the one you just created (you can easily do it by changing the 'name' property on pod.yaml). Connect to it and verify that '/etc/foo' contains the 'passwd' file. Delete pods to cleanup. Note: If you can't see the file from the second pod, can you figure out why? What would you do to fix that?
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: busybox
+  name: busybox2
+spec:
+  volumes:
+    - name: task-pv-storage
+      persistentVolumeClaim:
+        claimName: mypvc
+  containers:
+  - args:
+    - /bin/sh
+    - -c
+    - sleep 3600
+    image: busybox
+    name: busybox2
+    resources: {}
+    volumeMounts:
+      - mountPath: "/etc/foo"
+        name: task-pv-storage
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: {}
+```
+
+```
+kubectl create -f output.yaml
+kubectl exec -it busybox2 -- /bin/sh
+cat /etc/foo/passwd
+```
+
+```
+kubectl delete pod busybox
+```
+
+If the file doesn't show on the second pod but it shows on the first, it has most likely been scheduled on a different node.
+
+they are on different nodes, you won't see the file, because we used the hostPath volume type. If you need to access the same files in a multi-node cluster, you need a volume type that is independent of a specific node. There are lots of different types per cloud provider 
+
+## 6. Create a busybox pod with 'sleep 3600' as arguments. Copy '/etc/passwd' from the pod to your local folder
