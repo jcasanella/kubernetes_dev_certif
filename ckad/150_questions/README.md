@@ -118,3 +118,78 @@ kubectl get pod nginx -w
 kubectl explain pods.spec.containers
 kubectl get pod nginx -o jsonpath="{.spec.containers[].image}" | awk -F ":" '{ print $2 }'
 ```
+
+### 16. Create the nginx pod and execute the simple shell on the pod
+```
+kubectl run nginx --image=nginx --restart=Never
+kubectl exec -it nginx -- /bin/sh
+```
+
+### 17. Get the IP Address of the pod you just created
+```
+get pod nginx  -o wide --no-headers
+```
+
+### 18. Create a busybox pod and run command ls while creating it and check the logs
+```
+kubectl run busybox --image=busybox -- ls
+kubectl logs busybox
+```
+
+### 19. If pod crashed check the previous logs of the pod
+```
+kubectl logs --help
+kubectl logs busybox -p
+```
+
+### 20. Create a busybox pod with command sleep 3600
+```
+kubectl run busybox --image=busybox --restart=Never -- /bin/sh -c 'sleep 3600'
+```
+
+### 21. Check the connection of the nginx pod from the busybox pod
+```
+kubectl get pods -o wide
+kubectl exec -it busybox -- /bin/sh
+wget -O- 10.1.0.108:80
+```
+
+### 22. Create a busybox pod and echo message ‘How are you’ and delete it manually
+```
+kubectl run busybox --image=nginx --restart=Never -it -- echo "How are you"
+kubectl delete pod busybox
+```
+
+### 23. Create a busybox pod and echo message ‘How are you’ and have it deleted immediately
+```
+kubectl run busybox --image=nginx --restart=Never --rm -it -- echo "How are you"
+```
+
+### 24. Create an nginx pod and list the pod with different levels of verbosity
+```
+kubectl run nginx --image=nginx --restart=Never --port=80
+kubectl get po nginx --v=7
+kubectl get po nginx --v=8
+kubectl get po nginx --v=9
+``` 
+
+### 25. List the nginx pod with custom columns POD_NAME and POD_STATUS
+```
+kubectl get pods --help # look for custom columns
+kubectl get po -o=custom-columns="POD_NAME:.metadata.name, POD_STATUS:.status.containerStatuses[].state"
+```
+
+### 26. List all the pods sorted by name
+
+https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#get
+
+```
+kubectl explain pod.metadata
+kubectl get pods --sort-by=.metadata.name
+```
+
+### 27. List all the pods sorted by created timestamp
+```
+kubectl explain pod.metadata
+kubectl get pods --sort-by=.metadata.creationTimestamp
+```
