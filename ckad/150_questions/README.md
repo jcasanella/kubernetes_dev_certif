@@ -105,3 +105,16 @@ kubectl run nginx --image=nginx:1.17.4 --port=80
 kubectl edit pod nginx
 kubectl describe pod nginx
 ```
+
+### 14. Change the Image version back to 1.17.1 for the pod you just updated and observe the changes
+```
+kubectl edit pod nginx
+kubectl describe pod nginx
+kubectl get pod nginx -w
+```
+
+### 15. Check the Image version without the describe command
+```
+kubectl explain pods.spec.containers
+kubectl get pod nginx -o jsonpath="{.spec.containers[].image}"
+```
