@@ -116,5 +116,5 @@ kubectl get pod nginx -w
 ### 15. Check the Image version without the describe command
 ```
 kubectl explain pods.spec.containers
-kubectl get pod nginx -o jsonpath="{.spec.containers[].image}"
+kubectl get pod nginx -o jsonpath="{.spec.containers[].image}" | awk -F ":" '{ print $2 }'
 ```
