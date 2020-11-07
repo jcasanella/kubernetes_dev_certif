@@ -193,3 +193,140 @@ kubectl get pods --sort-by=.metadata.name
 kubectl explain pod.metadata
 kubectl get pods --sort-by=.metadata.creationTimestamp
 ```
+
+## Multi-Container Pods (10%)
+
+### 28. Create a Pod with three busy box containers with commands “ls; sleep 3600;”, “echo Hello World; sleep 3600;” and “echo this is the third container; sleep 3600” respectively and check the status
+```
+kubectl run busybox --image=busybox --dry-run=client -o yaml > output.yaml -- /bin/sh -c "ls; sleep 3600"
+```
+and add the other 2 containers to the pod definition.
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: busybox
+  name: busybox
+spec:
+  containers:
+  - args:
+    - /bin/sh
+    - -c
+    - ls; sleep 3600
+    image: busybox
+    name: busybox1
+    resources: {}
+  - args:
+    - /bin/sh
+    - -c
+    - echo 'Hello World'; sleep 3600
+    image: busybox
+    name: busybox2
+    resources: {}
+  - args:
+    - /bin/sh
+    - -c
+    - echo 'This is the third container'; sleep 3600
+    image: busybox
+    name: busybox3
+    resources: {}
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: {}
+```
+```
+kubectl get pods -l run=busybox
+```
+
+### 29. Check the logs of each container that you just created
+```
+kubectl logs busybox --help
+kubectl logs busybox -c busybox1
+kubectl logs busybox -c busybox2
+kubectl logs busybox -c busybox3
+```
+
+### 30. Check the previous logs of the second container busybox2 if any
+```
+kubectl logs busybox -c busybox2 -p
+```
+
+### 31. Run command ls in the third container busybox3 of the above pod
+```
+kubectl exec -it busybox -c busybox3 -- /bin/sh -c 'ls'
+```
+
+### 32. How metrics of the above pod containers and puts them into the file.log and verify
+
+https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#top
+
+```
+kubectl top pod --help
+kubectl top pod busybox --containers
+kubectl top pod busybox --containers > file.log
+cat file.log
+```
+
+### 33. Create a Pod with main container busybox and which executes this “while true; do echo ‘Hi I am from Main container’ >> /var/log/index.html; sleep 5; done” and with sidecar container with nginx image which exposes on port 80. Use emptyDir Volume and mount this volume on path /var/log for busybox and on path /usr/share/nginx/html for nginx container. Verify both containers are running.
+
+https://www.magalix.com/blog/the-sidecar-pattern
+https://medium.com/bb-tutorials-and-thoughts/kubernetes-learn-sidecar-container-pattern-6d8c21f873d
+https://medium.com/bb-tutorials-and-thoughts/kubernetes-learn-init-container-pattern-7a757742de6b
+https://medium.com/bb-tutorials-and-thoughts/kubernetes-learn-adaptor-container-pattern-97674285983c
+https://medium.com/bb-tutorials-and-thoughts/kubernetes-learn-ambassador-container-pattern-bc2e1331bd3a
+https://kubernetes.io/docs/concepts/storage/volumes/
+
+```
+kubectl run busybox --image=busybox --dry-run=client -o yaml > output.yaml -- /bin/sh -c "while true; do echo 'Hi I am from Main container' >> /var/log/index.html; sleep 5; done"
+
+kubectl run nginx --image=nginx --port=80 --dry-run=client -o yaml > nginx.yaml
+```
+
+add nginx container and expose port 80, we can use the template created in the previouscmd
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: busybox
+  name: busybox
+spec:
+  containers:
+  - args:
+    - /bin/sh
+    - -c
+    - while true; do echo Hi I am from Main container >> /var/log/index.html; sleep
+      5; done
+    image: busybox
+    name: busybox
+    resources: {}
+    volumeMounts:
+    - mountPath: /var/log
+      name: cache-volume
+  - image: nginx
+    name: nginx
+    ports:
+    - containerPort: 80
+    volumeMounts:
+    - mountPath: /usr/share/nginx/html
+      name: cache-volume
+  volumes:
+  - name: cache-volume
+    emptyDir: {}
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: {}
+```
+
+```
+kubectl apply -f output.yaml
+
+kubectl exec -it  busybox -c busybox -- /bin/sh -c 'cat /var/log/index.html'
+kubectl exec -it busybox -c nginx -- /bin/sh -c 'cat /usr/share/nginx/html'
+```
+
+
