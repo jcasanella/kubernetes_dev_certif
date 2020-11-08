@@ -329,4 +329,318 @@ kubectl exec -it  busybox -c busybox -- /bin/sh -c 'cat /var/log/index.html'
 kubectl exec -it busybox -c nginx -- /bin/sh -c 'cat /usr/share/nginx/html'
 ```
 
+## Pod Design (20%)
 
+ ### 34. Get the pods with label information
+```
+kubectl get pods --show-labels
+```
+### 35. Create 5 nginx pods in which two of them is labeled env=prod and three of them is labeled env=dev
+
+```
+#!/bin/bash
+
+for i in {1..5}
+do
+  echo "Creating pod nginx${i}"
+  if [[ $i -lt 3 ]]
+  then
+    kubectl run nginx${i} --image=nginx --labels="env=prod"
+  else
+    kubectl run nginx${i} --image=nginx --labels="env=prod"
+  fi
+done
+```
+
+```
+kubectl get pods -l 'env=prod'
+kubectl get pods -l 'env=dev'
+```
+
+### 36. Verify all the pods are created with correct labels
+```
+kubectl get pods --show-labels
+```
+
+### 37. Get the pods with label env=dev and also output the labels
+```
+kubectl get pods -l 'env=dev' --show-labels
+```
+
+### 38. Get the pods with label env=prod and also output the labels
+```
+kubectl get pods -l 'env=prod' --show-labels
+```
+
+### 39. Get the pods with label env
+```
+kubectl get pods
+kubectl get pods -l env
+```
+
+### 40. Get the pods with labels env=dev and env=prod
+```
+kubectl get pods -l 'env in (dev,prod)'
+```
+
+### 41. Get the pods with labels env=dev and env=prod and output the labels as well
+```
+kubectl get pods -l 'env in (dev,prod)' --show-labels
+```
+
+### 42. Change the label for one of the pod to env=uat and list all the pods to verify
+
+https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#label
+
+```
+kubectl edit pod nginx5
+```
+Change the label
+```
+kubectl get pods --show-labels
+```
+
+Other option is:
+```
+kubectl label pod/nginx-dev3 env=uat --overwrite
+```
+
+### 43. Remove the labels for the pods that we created now and verify all the labels are removed
+
+https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+
+This command in windows, it fails, but should work in linux:
+```
+kubectl label pod nginx{1..2} env-
+```
+
+```
+kubectl label pod nginx1 env-
+kubectl label pod nginx2 env-
+kubectl label pod nginx3 env-
+kubectl label pod nginx4 env-
+kubectl label pod nginx5 env-
+
+kubectl get pods --show-labels | grep nginx
+```
+
+### 44. Let’s add the label app=nginx for all the pods and verify
+
+In windows does not work, to test in linux
+```
+kubectl label pod nginx-dev{1..3} app=nginx
+kubectl label pod nginx-prod{1..2} app=nginx
+kubectl get po --show-labels
+```
+
+```
+#!/bin/bash
+
+for i in {1..5}
+do
+  kubectl label pod nginx${i} app=nginx
+done
+```
+
+```
+kubectl get pods -l 'app=nginx'
+```
+
+### 45. Get all the nodes with labels (if using minikube you would get only master node)
+```
+kubectl get nodes --show-labels
+```
+
+### 46. Label the node (minikube if you are using) nodeName=nginxnode
+```
+kubectl get pods -o wide | awk {'print $7'}
+kubectl label node docker-desktop nodeName=nginxnode
+kubectl get nodes -l nodeName=nginxnode --show-labels
+```
+
+### 47. Create a Pod that will be deployed on this node with the label nodeName=nginxnode
+
+https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+
+```
+kubectl run nginx --image=nginx -o yaml --dry-run=client > output.yaml
+```
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: nginx
+  name: nginx
+spec:
+  containers:
+  - image: nginx
+    name: nginx
+    resources: {}
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: {}
+```
+Add the node selector:
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: nginx
+  name: nginx
+spec:
+  nodeSelector:
+    nodeName: nginxnode
+  containers:
+  - image: nginx
+    name: nginx
+    resources: {}
+  dnsPolicy: ClusterFirst
+  restartPolicy: Never
+status: {}
+```
+```
+kubectl describe po nginx | grep Node-Selectors
+```
+
+### 48. Annotate the pods with name=webapp
+
+```
+#!/bin/bash
+
+for i in {1..5}
+do
+  kubectl annotate pods nginx${i} name=webapp
+done
+```
+
+```
+kubectl describe pod nginx1 | grep Annotations
+```
+
+Other option:
+
+```
+kubectl annotate pod nginx-dev{1..3} name=webapp
+kubectl annotate pod nginx-prod{1..2} name=webapp
+```
+
+### 49. Remove the annotations on the pods and verify
+```
+#!/bin/bash
+
+for i in {1..5}
+do
+  kubectl annotate pods nginx${i} name-
+done
+```
+
+Other option:
+
+```
+kubectl annotate pod nginx-dev{1..3} name-
+kubectl annotate pod nginx-prod{1..2} name-
+```
+
+```
+kubectl describe pod nginx{1..5} | grep -i annotations
+```
+
+### 50. Remove all the pods that we created so far
+```
+kubectl delete pods --help
+kubectl delete pods --all
+kubectl get pods
+```
+
+### 51. Create a deployment called webapp with image nginx with 5 replicas
+```
+kubectl create deployment webapp --image=nginx --replicas=5
+kubectl get deployments
+```
+
+### 52. Output the yaml file of the deployment you just created
+```
+kubectl get deploy webapp -o yaml
+```
+
+### 53. Get the pods of this deployment
+```
+kubectl get deployments --show-labels
+kubectl get pods -l app=webapp
+```
+
+### 54. Scale the deployment from 5 replicas to 20 replicas and verify
+```
+kubectl edit deployment webapp
+```
+Change replicas to 20
+```
+kubectl get deployments --show-labels
+kubectl get pods -l app=webapp --no-headers | wc -l
+```
+
+### 55. Get the deployment rollout status
+
+https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#rollout
+```
+kubectl rollout status deployment webapp
+```
+
+### 56. Get the replicaset that created with this deployment
+```
+kubectl get deployments --show-labels
+kubectl get replicaset -l app=webapp
+```
+
+### 57. Get the yaml of the replicaset and pods of this deployment
+```
+kubectl get rs,pods -l app=webapp -o yaml
+```
+
+other option is
+
+```
+kubectl get rs -l app=webapp -o yaml
+kubectl get po -l app=webapp -o yaml
+```
+
+### 58. Delete the deployment you just created and watch all the pods are also being deleted
+```
+kubectl delete deployment webapp
+kubectl get pods -l app=webapp
+```
+
+### 59. Create a deployment of webapp with image nginx:1.17.1 with container port 80 and verify the image version
+```
+kubectl create deployment webapp --image=nginx:1.17.1 --port=80
+kubectl describe pod webapp-5b94956f7-pwznz | grep -i image
+```
+
+### 60. Update the deployment with the image version 1.17.4 and verify
+```
+kubectl edit webapp
+kubectl get deployments --show-labels
+kubectl get pods -l app=webapp
+kubectl describe pod webapp-58958d9c46-zf5hs | grep -i image
+```
+
+### 61. Check the rollout history and make sure everything is ok after the update
+
+https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#rollout
+
+```
+kubectl rollout history deployment webapp
+```
+
+### 62. Undo the deployment to the previous version 1.17.1 and verify Image has the previous version
+
+https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#-em-undo-em-
+
+```
+kubectl rollout undo deployment webapp
+kubectl describe pod webapp-5b94956f7-m8ql9 | grep -i image
+```
