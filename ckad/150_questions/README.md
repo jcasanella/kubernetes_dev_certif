@@ -644,3 +644,162 @@ https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#-em-undo
 kubectl rollout undo deployment webapp
 kubectl describe pod webapp-5b94956f7-m8ql9 | grep -i image
 ```
+
+### 63. Update the deployment with the image version 1.16.1 and verify the image and also check the rollout history
+```
+kubectl edit deployment webapp
+kubectl get deployment webapp --show-labels
+kubectl get pods -l app=webapp
+kubectl describe pod webapp-64d7bdc68b-j6bhn | grep -i image
+kubectl rollout history deployment webapp
+```
+
+### 64. Update the deployment to the Image 1.17.1 and verify everything is ok
+```
+kubectl rollout undo deployment webapp
+kubectl rollout status deployment webapp
+kubectl describe deploy webapp | grep -i image
+```
+
+### 65. Update the deployment with the wrong image version 1.100 and verify something is wrong with the deployment
+```
+kubectl edit deployment webapp
+kubectl rollout status deployment webapp
+kubectl get pod webapp-6d68d6984f-8jv8h
+```
+
+### 66. Undo the deployment with the previous version and verify everything is Ok
+```
+kubectl rollout undo deployment webapp
+kubectl rollout history deployment webapp
+kubectl rollout status deployment webapp
+kubectl describe deployment webapp | grep -i image
+```
+
+### 66. Check the history of the specific revision of that deployment
+```
+kubectl rollout history deployment webbapp --revision=7
+```
+
+### 67. Pause the rollout of the deployment
+
+https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#-em-undo-em-
+
+```
+kubectl rollout pause deployment webapp
+```
+
+### 68. Update the deployment with the image version latest and check the history and verify nothing is going on
+```
+kubectl edit deployment webapp
+kubectl rollout history deployment webapp
+```
+
+### 69. Resume the rollout of the deployment
+```
+kubectl rollout resume deployment webapp
+kubectl rollout history deployment webapp
+kubectl describe deployment webapp | grep -i image
+```
+
+### 70. Apply the autoscaling to this deployment with minimum 10 and maximum 20 replicas and target CPU of 85% and verify hpa is created and replicas are increased to 10 from 1
+
+https://kubernetes.io/blog/2016/07/autoscaling-in-kubernetes/
+https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/
+https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#:~:text=The%20Horizontal%20Pod%20Autoscaler%20automatically,other%20application%2Dprovided%20metrics).
+
+HPA - Horizontal Pod Autoscale
+
+```
+kubectl autoscale deployment webbapp --min=10 --max=20 --cpu-percent=50
+kubectl get hpa
+kubectl get deployments --show-labels
+kubectl get pods -l app=webbapp
+kubectl describe deployment webapp
+```
+
+### 71. Clean the cluster by deleting deployment and hpa you just created
+```
+kubectl delete deployment webapp
+kubectl get deployments
+kubectl delete hpa webapp
+kubectl get hpa
+```
+
+### 72. Create a Job with an image node which prints node version and also verifies there is a pod created for this job
+
+https://kubernetes.io/docs/concepts/workloads/controllers/job/
+
+```
+kubectl create job nodeversion --image=node -- node -v
+kubectl get job -w
+kubectl get pod
+```
+
+### 73. Get the logs of the job just created
+```
+kubectl logs nodeversion-q79cn
+```
+
+### 74. Output the yaml file for the Job with the image busybox which echos “Hello I am from job”
+```
+kubectl create job hello-job --image=busybox -o yaml --dry-run=client > output.yaml -- /bin/sh -c "echo 'Hello I am from job'"
+```
+
+### 75. Run the job and verify the job and the associated pod is created and check the logs as well
+```
+kubectl apply -f .\output.yaml
+kubectl get jobs --show-labels
+kubectl describe job hello-job
+kubectl get pods -l controller-uid=c05624fe-e53c-45e2-821a-2ca098a8f8a6,job-name=nodeversion
+kubectl logs nodeversion-q79cn
+```
+
+### 76. Delete the job we just created
+```
+kubectl delete job hello-job
+kubectl get jobs
+```
+
+### 77. Create the same job and make it run 10 times one after one
+```
+kubectl explain jobs.spec
+kubectl create job run-job --image=busybox -o yaml --dry-run=client > output.yaml -- /bin/sh -c "echo 'This is just a test'"
+```
+Add `completions: 10` to the yaml file created.
+
+```
+apiVersion: batch/v1
+kind: Job
+metadata:
+  creationTimestamp: null
+  name: run-job
+spec:
+  completions: 10
+  template:
+    metadata:
+      creationTimestamp: null
+    spec:
+      containers:
+      - command:
+        - /bin/sh
+        - -c
+        - echo 'This is just a test'
+        image: busybox
+        name: run-job
+        resources: {}
+      restartPolicy: Never
+status: {}
+```
+```
+kubectl apply -f output.yaml
+kubectl describe job run-job
+```
+
+### 78. Watch the job that runs 10 times one by one and verify 10 pods are created and delete those after it’s completed
+```
+kubectl get job -w
+kubectl get pods
+kubectl delete job run-job
+kubectl get pods
+```
