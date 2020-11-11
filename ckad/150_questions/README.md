@@ -942,3 +942,165 @@ kubectl delete pvc mypvc
 ```
 
 ### 89. Create a Pod with an image Redis and configure a volume that lasts for the lifetime of the Pod
+
+**Note**: emptyDir is the volume that lasts for the life of the pod
+
+```
+kubectl run redis --image=redis -o yaml --dry-run=client > output.yaml
+```
+Edit output.yaml and add `volumes` section
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: redis
+  name: redis
+spec:
+  containers:
+  - image: redis
+    name: redis
+    resources: {}
+    volumeMounts:
+    - mountPath: /cache
+      name: cache-volume
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+  volumes:
+  - name: cache-volume
+    emptyDir: {}
+status: {}
+```
+```
+kubectl apply -f output.yaml
+kubectl describe pod redis | grep -i volumes -A 10
+```
+
+### 90. Exec into the above pod and create a file named file.txt with the text ‘This is called the file’ in the path /cache and open another tab and exec again with the same pod and verifies file exist in the same path.
+
+```
+kubectl exec -it redis -- /bin/sh -c "echo 'This is called the file' > /cache/file.txt"
+kubectl exec -it redis -- bash
+cat /cache/file.txt
+```
+
+### 91. Delete the above pod and create again from the same yaml file and verifies there is no file.txt in the path /data/redis
+
+```
+kubectl delete -f .\output.yaml
+kubectl exec -it redis -- /bin/sh -c 'ls /cache'
+```
+
+### 92. Create PersistentVolume named task-pv-volume with storage 10Gi, access modes ReadWriteOnce, storageClassName manual, and volume at /mnt/data and Create a PersistentVolumeClaim of at least 3Gi storage and access mode ReadWriteOnce and verify status is Bound
+
+```
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: task-pv-volume
+spec:
+  capacity:
+    storage: 10Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Recycle
+  storageClassName: manual
+  hostPath:
+    path: /tmp/data
+```
+```
+kubectl apply -f output.yaml
+kubectl get pv
+```
+```
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: block-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: 3Gi
+```
+```
+kubectl apply -f output.yaml
+kubectl get pvc
+```
+
+### 93. Create an nginx pod with containerPort 80 and with a PersistentVolumeClaim task-pv-claim and has a mouth path "/usr/share/nginx/html"
+
+```
+kubectl run nginx --image=volume -o yaml --dry-run=client > output.yaml
+```
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: nginx
+  name: nginx
+spec:
+  containers:
+  - image: volume
+    name: nginx
+    resources: {}
+    volumeDevices:
+    - name: data
+      devicePath: /usr/share/nginx/html
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+  volumes:
+  - name: data
+    persistentVolumeClaim:
+      claimName: block-pvc
+status: {}
+```
+```
+kubectl apply -f output.yaml
+kubectl describe pod nginx | grep -i volume
+```
+
+## Configuration (18%)
+
+### 94. List all the configmaps in the cluster
+
+```
+kubectl get cm --all-namespaces
+```
+
+### 95. Create a configmap called myconfigmap with literal value appname=myapp
+```
+kubectl create cm --help
+kubectl create configmap myconfigmap --from-literal=appname=myapp
+kubectl get cm
+```
+
+### 96. Verify the configmap we just created has this data
+```
+kubectl describe cm myconfigmap
+```
+
+### 97. Delete the configmap myconfigmap we just created
+```
+kubectl delete cm myconfigmap
+```
+
+### 98. Create a file called config.txt with two values key1=value1 and key2=value2. Create a configmap named keyvalcfgmap and read data from the file config.txt and verify that configmap is created correctly 
+
+Create a file with this content:
+```
+key1=value1
+key2=value2
+```
+```
+kubectl create configmap keyvalcfgmap --from-file=config.txt
+kubectl describe cm keyvalcfgmap
+```
