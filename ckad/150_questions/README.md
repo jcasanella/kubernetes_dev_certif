@@ -803,3 +803,142 @@ kubectl get pods
 kubectl delete job run-job
 kubectl get pods
 ```
+
+### 79. Create the same job and make it run 10 times parallel
+
+kubectl explain job.spec
+kubectl create job hello-job --image=busybox -o yaml --dry-run=client > output.yaml -- /bin/sh -c "echo 'Hello I am from job'"
+
+Add `parallelism: 10`
+
+```
+apiVersion: batch/v1
+kind: Job
+metadata:
+  creationTimestamp: null
+  name: hello-job
+spec:
+  parallelism: 10
+  template:
+    metadata:
+      creationTimestamp: null
+    spec:
+      containers:
+      - command:
+        - /bin/sh
+        - -c
+        - echo 'Hello I am from job'
+        image: busybox
+        name: hello-job
+        resources: {}
+      restartPolicy: Never
+status: {}
+```
+
+```
+kubectl create -f output.yaml
+```
+
+### 80. Watch the job that runs 10 times parallelly and verify 10 pods are created and delete those after it’s completed
+
+```
+kubectl get job -w
+kubectl get pods
+kubectl logs hello-job-8hfb5
+kubectl delete -f .\output.yaml
+```
+
+### 81. Create a Cronjob with busybox image that prints date and hello from kubernetes cluster message for every minute
+
+https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/
+
+```
+kubectl create cronjob my-job --image=busybox --schedule="*/1 * * * *" -- /bin/sh -c "date; echo 'hello from kubernetes'"
+```
+
+### 82. Output the YAML file of the above cronjob
+```
+kubectl get cj
+kubectl get cj my-job -o yaml
+```
+
+### 83. Verify that CronJob creating a separate job and pods for every minute to run and verify the logs of the pod
+
+```
+kubectl get job
+kubectl get pods
+kubectl logs my-job-1605047220-cxhps
+```
+
+### 84. Delete the CronJob and verify all the associated jobs and pods are also deleted.
+```
+kubectl delete cj my-job
+kubectl get cj
+kubectl get pods
+```
+
+## State Persistence (8%)
+
+### 85. List Persistent Volumes in the cluster
+
+```
+kubectl get persistentvolumes --all-namespaces
+```
+
+Other option:
+```
+kubectl get pv
+```
+
+### 86. Create a hostPath PersistentVolume named task-pv-volume with storage 10Gi, access modes ReadWriteOnce, storageClassName manual, and volume at /mnt/data and verify
+
+https://kubernetes.io/docs/concepts/storage/persistent-volumes/
+
+```
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: task-pv-volume
+spec:
+  capacity:
+    storage: 10Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Recycle
+  storageClassName: manual
+  hostPath:
+    path: /mnt/data
+```
+```
+kubectl create -f output.yaml
+kubectl get pv --show-labels
+```
+
+### 87. Create a PersistentVolumeClaim of at least 3Gi storage and access mode ReadWriteOnce and verify status is Bound
+
+```
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: myclaim
+spec:
+  accessModes:
+    - ReadWriteOnce
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: 3Gi
+```
+```
+kubectl create -f output.yaml
+kubectl get pvc | grep -i bound
+```
+
+### 88. Delete persistent volume and PersistentVolumeClaim we just created
+```
+kubectl delete pv task-pv-volume
+kubectl delete pvc mypvc
+```
+
+### 89. Create a Pod with an image Redis and configure a volume that lasts for the lifetime of the Pod
