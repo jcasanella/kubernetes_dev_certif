@@ -1104,3 +1104,198 @@ key2=value2
 kubectl create configmap keyvalcfgmap --from-file=config.txt
 kubectl describe cm keyvalcfgmap
 ```
+
+### 99. Create an nginx pod and load environment values from the above configmap keyvalcfgmap and exec into the pod and verify the environment variables and delete the pod
+
+https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-configmap/
+
+```
+kubectl run nginx --image=nginx -o yaml --dry-run=client > output.yaml 
+```
+
+Edit file and add section `configMapKeyRef`
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: nginx
+  name: nginx
+spec:
+  containers:
+  - image: nginx
+    name: nginx
+    resources: {}
+    envFrom:
+    # Define the environment variable
+    - configMapKeyRef:
+        # The ConfigMap containing the value you want to assign to SPECIAL_LEVEL_KEY
+        name: keyvalcfgmap
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: {}
+```
+
+```
+kubectl exec -it nginx -- env
+kubectl delete pod nginx
+```
+
+### 100. Create an env file file.env with var1=val1 and create a configmap envcfgmap from this env file and verify the configmap
+```
+echo var1=val1 > file.env 
+kubectl create configmap envcfgmap --from-env-file=file.env
+kubectl get cm envcfgmap
+```
+
+### 101. Create an nginx pod and load environment values from the above configmap envcfgmap and exec into the pod and verify the environment variables and delete the pod
+```
+kubectl run nginx --image=nginx -o yaml --dry-run=client > output.yaml
+```
+
+Add `env` section
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: nginx
+  name: nginx
+spec:
+  containers:
+  - image: nginx
+    name: nginx
+    resources: {}
+    env:
+    - name: ENVIRONMENT
+      valueFrom:
+        configMapKeyRef:
+          name: envcfgmap
+          key: var1
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: {}
+```
+```
+kubectl apply -f output.yaml
+kubectl exec -it nginx -- env
+kubectl delete pod nginx
+```
+
+### 102. Create a configmap called cfgvolume with values var1=val1, var2=val2 and create an nginx pod with volume nginx-volume which reads data from this configmap cfgvolume and put it on the path /etc/cfg
+```
+kubectl create cm cfgvolume --from-literal=key1=config1 --from-literal=key2=config2
+kubectl run nginx --image=nginx  -o yaml --dry-run=client > output.yaml
+```
+
+Add section `volumes`
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: nginx
+  name: nginx
+spec:
+  containers:
+  - image: nginx
+    name: nginx
+    resources: {}
+    volumeMounts:
+    - name: config-volume
+      mountPath: /etc/cfg
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+  volumes:
+  - name: config-volume
+    configMap:
+      name: cfgvolume
+status: {}
+```
+
+```
+kubectl apply -f output.yaml
+kubectl exec -it nginx -- ls /etc/cfg
+kubectl delete pod nginx
+```
+
+### 103. Create a pod called secbusybox with the image busybox which executes command sleep 3600 and makes sure any Containers in the Pod, all processes run with user ID 1000 and with group id 2000 and verify.
+
+https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+```
+kubectl run secbusybox --image=busybox -o yaml --dry-run=client > output.yaml -- /bin/sh -c "sleep 3600"
+```
+Add section `securityContext`
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: secbusybox
+  name: secbusybox
+spec:
+  securityContext:
+    runAsUser: 1000
+    runAsGroup: 2000
+  containers:
+  - args:
+    - /bin/sh
+    - -c
+    - sleep 3600
+    image: busybox
+    name: secbusybox
+    resources: {}
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: {}
+```
+```
+kubectl apply -f output.yaml
+kubectl exec -it secbusybox -- /bin/sh -c id
+kubectl delete pod secbusybox
+```
+
+### 104. Create the same pod as above this time set the securityContext for the container as well and verify that the securityContext of container overrides the Pod level securityContext.
+
+Add `securityContext` at container level
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: secbusybox
+  name: secbusybox
+spec:
+  securityContext:
+    runAsUser: 1000
+    runAsGroup: 2000
+  containers:
+  - args:
+    - /bin/sh
+    - -c
+    - sleep 3600
+    image: busybox
+    name: secbusybox
+    resources: {}
+    securityContext:
+      runAsUser: 2000
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: {}
+```
+```
+kubectl apply -f output.yaml
+kubectl exec -it secbusybox -- /bin/sh -c id
+kubectl delete pod secbusybox
+```
+
+### 105. Create pod with an nginx image and configure the pod with capabilities NET_ADMIN and SYS_TIME verify the capabilities
