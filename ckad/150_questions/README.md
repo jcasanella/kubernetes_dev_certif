@@ -1588,3 +1588,102 @@ kubectl get pods
 kubectl describe pod busybox | grep -i admin
 ```
 
+## Observability (18%)
+
+### 120. Create an nginx pod with containerPort 80 and it should only receive traffic only it checks the endpoint / on port 80 and verify and delete the pod.
+```
+kubectl run nginx --image=nginx -o yaml --dry-run=client > output.yaml
+```
+
+Add `readiness` section
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: nginx
+  name: nginx
+spec:
+  containers:
+  - image: nginx
+    name: nginx
+    resources: {}
+    readinessProbe:
+      httpGet:
+        path: /
+        port: 80   
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: {}
+```
+```
+kubectl apply -f output.yaml
+kubectl get pods
+kubectl describe pod nginx | grep -i readiness
+kubectl delete -f output.yaml
+```
+
+### 121. Create an nginx pod with containerPort 80 and it should check the pod running at endpoint / healthz on port 80 and verify and delete the pod.
+```
+kubectl run nginx --image=nginx -o yaml --dry-run=client > output.yaml
+```
+
+Add `livenessProbe` section
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: nginx
+  name: nginx
+spec:
+  containers:
+  - image: nginx
+    name: nginx
+    resources: {}
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: 80
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: {}
+```
+
+```
+kubectl apply -f output.yaml
+kubectl get pods
+kubectl describe pod nginx | grep -i liveness
+```
+
+### 122. Create an nginx pod with containerPort 80 and it should check the pod running at endpoint /healthz on port 80 and it should only receive traffic only it checks the endpoint / on port 80. verify the pod.
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: nginx
+  name: nginx
+spec:
+  containers:
+  - image: nginx
+    name: nginx
+    resources: {}
+    readinessProbe:
+      httpGet:
+        path: /
+        port: 80   
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: 80
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: {}
+```
