@@ -1299,3 +1299,172 @@ kubectl delete pod secbusybox
 ```
 
 ### 105. Create pod with an nginx image and configure the pod with capabilities NET_ADMIN and SYS_TIME verify the capabilities
+```
+kubectl run nginx --image=nginx -o yaml --dry-run=client > output.yaml
+```
+Edit file and add the `securityContext`
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: nginx
+  name: nginx
+spec:
+  containers:
+  - image: nginx
+    name: nginx
+    resources: {}
+    securityContext:
+      capabilities:
+        add: ["NET_ADMIN", "SYS_TIME"]
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: {}
+```
+```
+kubectl apply -f output.yaml
+```
+
+### 106. Create a Pod nginx and specify a memory request and a memory limit of 100Mi and 200Mi respectively.
+
+https://kubernetes.io/docs/tasks/configure-pod-container/assign-memory-resource/
+
+```
+kubectl run nginx --image=nginx -o yaml --dry-run=client > output.yaml
+```
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: nginx
+  name: nginx
+spec:
+  containers:
+  - image: nginx
+    name: nginx
+    resources:
+      limits:
+        memory: "200Mi"
+      requests:
+        memory: "100Mi"
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: {}
+```
+```
+kubectl apply -f output.yaml
+kubectl top pod
+```
+
+### 107. Create a Pod nginx and specify a CPU request and a CPU limit of 0.5 and 1 respectively.
+
+https://kubernetes.io/docs/tasks/configure-pod-container/assign-cpu-resource/
+
+```
+kubectl run nginx --image=nginx -o yaml --dry-run=client > output.yaml
+```
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: nginx
+  name: nginx
+spec:
+  containers:
+  - image: nginx
+    name: nginx
+    resources:
+      limits:
+        cpu: "1"
+        memory: "200Mi"
+      requests:
+        cpu: "0.5"
+        memory: "100Mi"
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: {}
+```
+```
+kubectl apply -f output.yaml
+kubectl top pod
+```
+
+### 108. Create a Pod nginx and specify both CPU, memory requests and limits together and verify.
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: nginx
+  name: nginx
+spec:
+  containers:
+  - image: nginx
+    name: nginx
+    resources:
+      limits:
+        cpu: "1"
+      requests:
+        cpu: "0.5"
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: {}
+```
+
+### 109. Create a Pod nginx and specify a memory request and a memory limit of 100Gi and 200Gi respectively which is too big for the nodes and verify pod fails to start because of insufficient memory
+
+```
+kubectl run nginx --image=nginx -o yaml --dry-run=client > output.yaml
+```
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: nginx
+  name: nginx
+spec:
+  containers:
+  - image: nginx
+    name: nginx
+    resources:
+      limits:
+        memory: "200Gi"
+      requests:
+        memory: "100Gi"
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: {}
+```
+```
+kubectl apply -f output.yaml
+kubectl describe pod nginx
+```
+
+### 110. Create a secret mysecret with values user=myuser and password=mypassword
+```
+kubectl create secret generic --help
+kubectl create secret generic mysecret --from-literal=user=myuser --from-literal=password=mypassword
+kubectl get secrets
+```
+
+### 111. List the secrets in all namespaces
+```
+kubectl get secrets --all-namespaces
+```
+
+### 112. Output the yaml of the secret created above
+```
+kubectl get secret mysecret -o yaml
+```
