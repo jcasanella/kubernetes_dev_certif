@@ -1468,3 +1468,123 @@ kubectl get secrets --all-namespaces
 ```
 kubectl get secret mysecret -o yaml
 ```
+
+### 113. Create an nginx pod which reads username as the environment variable
+
+https://kubernetes.io/docs/concepts/configuration/secret/
+
+kubectl run nginx --image=nginx -o yaml --dry-run=client > output.yaml
+
+Edit file and add entry `env` 
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: nginx
+  name: nginx
+spec:
+  containers:
+  - image: nginx
+    name: nginx
+    env:
+    - name: USER_NAME
+      valueFrom:
+        secretKeyRef:
+          name: mysecret
+          key: user
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: {}
+```
+```
+kubectl create -f .\output.yaml
+kubectl get pods
+kubectl exec -it nginx -- env
+```
+
+### 114. Create an nginx pod which loads the secret as environment variables
+
+Add section `envFrom`
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: nginx
+  name: nginx
+spec:
+  containers:
+  - image: nginx
+    name: nginx
+    envFrom:
+    - secretRef:
+        name: mysecret
+  restartPolicy: Always
+status: {}
+```
+```
+kubectl apply -f .\output.yaml
+kubectl get pods
+kubectl exec -it nginx -- env
+```
+
+### 115. List all the service accounts in the default namespace
+```
+kubectl get sa
+```
+
+### 116. List all the service accounts in all namespaces
+```
+kubectl get sa --all-namespaces
+```
+
+### 117. Create a service account called admin
+```
+kubectl create sa admin
+kubectl get sa | grep admin
+```
+
+### 118. Output the YAML file for the service account we just created
+```
+kubectl get sa admin -o yaml
+```
+
+### 119. Create a busybox pod which executes this command sleep 3600 with the service account admin and verify
+
+https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/
+
+kubectl run busybox --image=busybox -o yaml --dry-run=client > output.yaml -- /bin/sh -c "sleep 3600"
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: busybox
+  name: busybox
+spec:
+  containers:
+  - args:
+    - /bin/sh
+    - -c
+    - sleep 3600
+    image: busybox
+    name: busybox
+    resources: {}
+  dnsPolicy: ClusterFirst
+  serviceAccountName: adminrep -i admin         
+  restartPolicy: Always
+status: {}
+```
+```
+kubectl apply -f output.yaml
+kubectl get pods
+kubectl describe pod busybox | grep -i admin
+```
+
