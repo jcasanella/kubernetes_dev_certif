@@ -1687,3 +1687,58 @@ spec:
   restartPolicy: Always
 status: {}
 ```
+
+### 123. Create the pod nginx with the above liveness and readiness probes so that it should wait for 20 seconds before it checks liveness and readiness probes and it should check every 25 seconds.
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: nginx
+  name: nginx
+spec:
+  containers:
+  - image: nginx
+    name: nginx
+    resources: {}
+    readinessProbe:
+      httpGet:
+        path: /
+        port: 80   
+      initialDelaySeconds: 20
+      periodSeconds: 25
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: 80
+      initialDelaySeconds: 20
+      periodSeconds: 25
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: {}
+```
+```
+kubectl apply -f output.yaml
+kubectl get pods
+kubectl describe pod nginx
+```
+
+### 124. Create a busybox pod with this command “echo I am from busybox pod; sleep 3600;” and verify the logs.
+```
+kubectl run busybox --image=busybox -- /bin/sh -c "echo 'I am from busybox'; sleep 3600;"
+kubectl logs busybox
+```
+
+### 125. List all the events sorted by timestamp and put them into file.log and verify
+```
+kubectl get events --sort-by=.metadata.creationTimestamp
+kubectl get events --sort-by=.metadata.creationTimestamp > file.log
+```
+
+### 126. Create a pod with an image alpine which executes this command ”while true; do echo ‘Hi I am from alpine’; sleep 5; done” and verify and follow the logs of the pod.
+```
+kubectl run alpine --image=alpine:latest -- /bin/sh -c "while true; do echo 'Hi I am from alpine'; sleep 5;  done"
+kubectl logs alpine -f
+```
