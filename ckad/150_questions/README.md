@@ -1742,3 +1742,40 @@ kubectl get events --sort-by=.metadata.creationTimestamp > file.log
 kubectl run alpine --image=alpine:latest -- /bin/sh -c "while true; do echo 'Hi I am from alpine'; sleep 5;  done"
 kubectl logs alpine -f
 ```
+
+### 127. Create the pod with this kubectl create -f https://gist.githubusercontent.com/bbachi/212168375b39e36e2e2984c097167b00/raw/1fd63509c3ae3a3d3da844640fb4cca744543c1c/not-running.yml. The pod is not in the running state. Debug it.
+```
+kubectl get pods
+kubectl get pod not-running
+kubectl describe pod not-running
+```
+
+it clearly says ImagePullBackOff something wrong with image
+
+### 128. This following yaml creates 4 namespaces and 4 pods. One of the pod in one of the namespaces are not in the running state. Debug and fix it. https://gist.githubusercontent.com/bbachi/1f001f10337234d46806929d12245397/raw/84b7295fb077f15de979fec5b3f7a13fc69c6d83/problem-pod.yaml.kubectl edit pod pod2 --namespace=namespace2
+```
+kubectl create -f https://gist.githubusercontent.com/bbachi/1f001f10337234d46806929d12245397/raw/84b7295fb077f15de979fec5b3f7a13fc69c6d83/problem-pod.yaml
+kubectl get pods --all-namespaces --show-labels
+kubectl get pod pod2 --namespace=namespace2
+kubectl describe pod pod2 --namespace=namespace2
+```
+
+Failed to pull image "ngnx": rpc error: 
+
+```
+kubectl edit pod pod2 --namespace=namespace2
+```
+
+Replace `ngnx` for `nginx`
+```
+kubectl edit pod pod2 --namespace=namespace2
+```
+
+### 129. Get the memory and CPU usage of all the pods and find out top 3 pods which have the highest usage and put them into the cpu-usage.txt file
+```
+kubectl top pod --all-namespaces | sort --reverse --key 3 --numeric | head -3
+
+// putting into file
+kubectl top pod --all-namespaces | sort --reverse --key 3 --numeric | head -3 > cpu-usage.txt
+```
+
