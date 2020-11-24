@@ -1779,3 +1779,74 @@ kubectl top pod --all-namespaces | sort --reverse --key 3 --numeric | head -3
 kubectl top pod --all-namespaces | sort --reverse --key 3 --numeric | head -3 > cpu-usage.txt
 ```
 
+## Services and Networking (13%)
+
+### 130. Create an nginx pod with a yaml file with label my-nginx and expose the port 80
+```
+kubectl run nginx --image=nginx --labels="app=my-nginx" --port 80 -o yaml --dry-run=client > output.yaml
+```
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    app: my-nginx
+  name: nginx
+spec:
+  containers:
+  - image: nginx
+    name: nginx
+    ports:
+    - containerPort: 80
+    resources: {}
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: {}
+```
+
+```
+kubectl apply -f output.yaml
+```
+
+### 131. Create the service for this nginx pod with the pod selector app: my-nginx
+
+https://kubernetes.io/docs/concepts/services-networking/service/
+
+```
+kubectl create service --help
+kubectl create service clusterip my-service -o yaml --tcp=80:9376 --dry-run=client > output.yaml
+```
+
+Add section `selector`
+
+```
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-service
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 9376
+  selector:
+    app: my-nginx
+  type: ClusterIP
+```
+```
+kubectl create -f nginx-svc.yaml
+kubectl get services
+kubectl describe service my-service
+kubectl get svc my-service -o wide
+```
+
+### 132. Delete the service and create the service with kubectl expose command and verify the label
+```
+kubectl delete service my-service
+kubectl get services
+kubectl expose po nginx --port=80 --target-port=9376
+kubectl get services --show-labels
+```
+
+### 133. Delete the service and create the service again with type NodePort
