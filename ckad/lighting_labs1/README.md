@@ -22,7 +22,7 @@ spec:
   persistentVolumeReclaimPolicy: Recycle
   storageClassName: manual
   hostPath:
-    path: /opt/volumne/nginx
+    path: /opt/volume/nginx
 ```
 ```
 kubectl create -f pv.yaml
@@ -36,14 +36,18 @@ kind: PersistentVolumeClaim
 metadata:
   name: log-claim
 spec:
-  storageClassName: manual
   accessModes:
     - ReadWriteMany
+  volumeMode: Filesystem
   resources:
     requests:
       storage: 200Mi
+  storageClassName: manual
 ```
-
+```
+kubectl apply -f pvc.yaml
+kubectl get pvc
+```
 ```
 kubectl run logger --image=nginx:alpine --dry-run=client -o yaml > output.yaml
 ```
@@ -54,7 +58,6 @@ Create the pod with the volumne mounted:
 apiVersion: v1
 kind: Pod
 metadata:
-  creationTimestamp: null
   labels:
     run: logger
   name: logger
@@ -67,9 +70,11 @@ spec:
     - mountPath: "/var/www/nginx"
       name: mypd
   volumes:
-    - name: mypd
-      persistentVolumeClaim:
-        claimName: log-claim
+  - name: mypd
+    persistentVolumeClaim:
+      claimName: log-claim
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
 status: {}
 ```
 ```
@@ -102,6 +107,35 @@ kubectl describe netpol default-deny
 kubectl get netpol default-deny -o yaml > netpol.yaml
 ```
 
+Original file:
+
+```
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  creationTimestamp: "2020-12-12T16:33:00Z"
+  generation: 1
+  managedFields:
+  - apiVersion: networking.k8s.io/v1
+    fieldsType: FieldsV1
+    fieldsV1:
+      f:spec:
+        f:policyTypes: {}
+    manager: kubectl-create
+    operation: Update
+    time: "2020-12-12T16:33:00Z"
+  name: default-deny
+  namespace: default
+  resourceVersion: "1885"
+  selfLink: /apis/networking.k8s.io/v1/namespaces/default/networkpolicies/default-deny
+  uid: 58e73a4c-0c42-4219-a747-b1463a3c3aac
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  ```
+
+
 Change name of the netpolicy and in spec
 
 ```
@@ -120,7 +154,35 @@ Change name of the netpolicy and in spec
       port: 80
 ```
 
+After changes:
+
+```
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+spec:
+  podSelector:
+    matchLabels:
+      run: secure-pod
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          name: webapp-color
+    ports:
+    - protocol: TCP
+      port: 80
+```
+
+```
 kubectl apply -f policy.yaml
+```
+
+```
+kubectl exec -it webapp-color -- sh
+nc -z secure-service 80 
+```
 
 ## 3. Create a pod called time-check in the dvl1987 namespace. This pod should run a container called time-check that uses the busybox image. 
 
@@ -188,6 +250,101 @@ kubectl apply -f output.yaml
 kubectl get pods -n dvl1987
 ```
 
-Create a new deployment called nginx-deploy, with one signle container called nginx, image nginx:1.16 and 4 replicas. The deployment should use RollingUpdate strategy with maxSurge=1, and maxUnavailable=2.
-Next upgrade the deployment to version 1.17 using rolling update.
-Finally, once all pods are updated, undo the update and go back to the previous version.
+## 4. Create a new deployment called nginx-deploy, with one single container called nginx, image nginx:1.16 and 4 replicas. 
+
+* The deployment should use RollingUpdate strategy with **maxSurge=1**, and **maxUnavailable=2**.
+* Next upgrade the deployment to version 1.17 using rolling update.
+* Finally, once all pods are updated, undo the update and go back to the previous version.
+
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deploy
+  labels:
+    app: nginx
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: nginx
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 4
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.16
+        ports:
+        - containerPort: 80
+```
+```
+kubectl apply -f deployment.yaml
+kubectl get deployments
+kubectl describe deployment nginx-deploy
+```
+```
+kubectl set image deployment/nginx-deploy nginx=nginx:1.17
+kubectl rollout undo deployment/nginx-deploy
+```
+
+## 5. Create a redis deployment with the following parameters:
+
+* Name of the deployment should be redis using the redis:alpine image. It should have exactly 1 replica.
+* The container should request for .2 CPU. It should use the label app=redis.
+* It should mount exactly 2 volumes:
+* Make sure that the pod is scheduled on master/controlplane node.
+* An Empty directory volume called data at path /redis-master-data.
+* A configmap volume called redis-config at path /redis-master.
+* The container should expose the port 6379.
+
+```
+kubectl create deployment redis --image=redis:alpine --dry-run=client -o yaml > output.yaml
+```
+
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  labels:
+    app: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:alpine
+        ports:
+        - containerPort: 6379
+        resources:
+          requests:
+            cpu: "0.2"
+        volumeMounts:
+        - mountPath: /redis-master-data
+          name: data
+        - mountPath: /redis-master
+          name: redis-config
+      volumes:
+      - name: data
+        emptyDir: {}
+      - name: redis-config
+        configMap:
+          name: redis-config
+```
+```
+kubectl apply -f output.yaml
+```
