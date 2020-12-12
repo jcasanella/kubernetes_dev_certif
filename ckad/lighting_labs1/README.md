@@ -325,6 +325,7 @@ spec:
       labels:
         app: redis
     spec:
+      nodeName: master
       containers:
       - name: redis
         image: redis:alpine
