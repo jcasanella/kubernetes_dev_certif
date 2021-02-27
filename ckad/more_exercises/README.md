@@ -596,13 +596,578 @@ secret1   Opaque   1      20s
 ```
 
 ### 2. Create a `pod1.yaml` which creates a single pod of image bash . This pod should mount the `secret1` to `/tmp/secret1`. This pod should stay idle after boot. Create that pod.
+```
+$ kubectl run bash --image=bash --dry-run=client -o yaml > pod1.yaml
 
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: bash
+  name: bash
+spec:
+  containers:
+  - image: bash
+    name: bash
+    resources: {}
+    args:     # Add
+    - /bin/sh # Add
+    - -c      # Add
+    - sleep 9999  # Add
+    volumeMounts:   # Add
+    - name: foo     # Add
+      mountPath: "/tmp/secret1"   # Add
+      readOnly: true  # Add
+  volumes:      # Add
+  - name: foo   # Add
+    secret:     # Add
+      secretName: secret1   # Add
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: {}
+```
 ### 3. Confirm pod1 has access to our password via file-system.
+```
+$ kubectl exec -it bash -- bash
 
-### 4. On your local create a folder drinks and it's content: mkdir drinks; echo ipa > drinks/beer; echo red > drinks/wine; echo sparkling > drinks/water
+ls -la /tmp/secret1
+total 4
+drwxrwxrwt    3 root     root           100 Feb 27 18:01 .
+drwxrwxrwt    1 root     root          4096 Feb 27 18:01 ..
+drwxr-xr-x    2 root     root            60 Feb 27 18:01 ..2021_02_27_18_01_03.654862325
+lrwxrwxrwx    1 root     root            31 Feb 27 18:01 ..data -> ..2021_02_27_18_01_03.654862325
+lrwxrwxrwx    1 root     root            15 Feb 27 18:01 password -> ..data/password
+```
 
-### 5. Create a ConfigMap containing all files of the folder drinks and their content.
+### 4. On your local create a folder drinks and it's content: 
+* mkdir drinks 
+* echo ipa > drinks/beer 
+* echo red > drinks/wine 
+* echo sparkling > drinks/water
 
-### 6. Make these ConfigMaps available in our pod1 using environment variables.
+and create a ConfigMap containing all files of the folder drinks and their content
 
-### 7. Check on pod1 if those environment variables are available.
+```
+$ kubectl create cm drinks --from-file=drinks
+$ kubectl get cm
+
+NAME     DATA   AGE
+drinks   3      31s
+
+$ kubectl describe cm drinks
+
+Name:         drinks
+Namespace:    default
+Labels:       <none>
+Annotations:  <none>
+
+Data
+====
+wine:
+----
+red
+
+beer:
+----
+ipa
+
+water:
+----
+sparkling
+
+Events:  <none>
+```
+
+### 5. Make these ConfigMaps available in our pod1 using environment variables.
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: bash
+  name: bash
+spec:
+  containers:
+  - image: bash
+    name: bash
+    resources: {}
+    args:     
+    - /bin/sh 
+    - -c      
+    - sleep 9999  
+    env:                # Add
+    - name: WINE        # Add
+      valueFrom:        # Add
+        configMapKeyRef:  # Add
+          name: drinks    # Add      
+          key: wine     # Add
+    - name: BEER        # Add
+      valueFrom:        # Add
+        configMapKeyRef: # Add
+          name: drinks  # Add
+          key: beer     # Add
+    - name: WATER       # Add
+      valueFrom:        # Add
+        configMapKeyRef: # Add
+          name: drinks  # Add
+          key: water    # Add
+    volumeMounts:       
+    - name: foo         
+      mountPath: "/tmp/secret1"   
+      readOnly: true  
+  volumes:      
+  - name: foo   
+    secret:     
+      secretName: secret1   
+  - name: config    # Add
+    configMap:      # Add
+      name: drinks  # Add
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: {}
+```
+
+### 6. Check on pod1 if those environment variables are available.
+```
+$ kubectl exec -it bash -- /bin/sh -c env
+
+KUBERNETES_SERVICE_PORT=443
+KUBERNETES_PORT=tcp://10.96.0.1:443
+_BASH_BASELINE=5.1
+HOSTNAME=bash
+SHLVL=1
+HOME=/root
+_BASH_VERSION=5.1.4
+BEER=ipa
+
+TERM=xterm
+KUBERNETES_PORT_443_TCP_ADDR=10.96.0.1
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+WINE=red
+
+KUBERNETES_PORT_443_TCP_PORT=443
+KUBERNETES_PORT_443_TCP_PROTO=tcp
+WATER=sparkling
+
+KUBERNETES_PORT_443_TCP=tcp://10.96.0.1:443
+KUBERNETES_SERVICE_PORT_HTTPS=443
+KUBERNETES_SERVICE_HOST=10.96.0.1
+PWD=/
+_BASH_LATEST_PATCH=4
+```
+
+## 6. Logging Sidecar
+
+Scenario setup: `kubectl create -f https://raw.githubusercontent.com/wuestkamp/k8s-challenges/master/9/scenario.yaml` and create  a pod to be able to run 
+`curl` 
+
+```
+$ kubectl run nginx --image=nginx
+$ kubectl exec -it nginx -- curl google.com
+
+<HTML><HEAD><meta http-equiv="content-type" content="text/html;charset=utf-8">
+<TITLE>301 Moved</TITLE></HEAD><BODY>
+<H1>301 Moved</H1>
+The document has moved
+<A HREF="http://www.google.com/">here</A>.
+</BODY></HTML>
+```
+
+The nginx pod has an emptyDir volume setup which is mounted at /var/log/nginx. You should be able to see access logs with:
+
+```
+kubectl exec nginx-5bb7d5c6dd-nqff6 -- /bin/sh -c 'tail -f /var/log/nginx/access.log'
+```
+
+### 1. Add a sidecar container of image bash to the nginx pod created with the `scenario.yaml`  Mount the pod scoped volume named logs into the sidecar, so same as nginx container does. Mount the pod scoped volume named logs into the sidecar, so same as nginx container does.
+```
+$ kubectl get deployments
+
+NAME    READY   UP-TO-DATE   AVAILABLE   AGE
+nginx   1/1     1            1           10m
+
+$ kubectl get deployment nginx -o yaml > deployment.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "1"
+  creationTimestamp: "2021-02-27T19:20:36Z"
+  generation: 1
+  labels:
+    run: nginx
+  name: nginx
+  namespace: default
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      run: nginx
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        run: nginx
+    spec:
+      containers:
+      - image: nginx
+        imagePullPolicy: Always
+        name: container1
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /var/log/nginx
+          name: logs
+      - image: bash
+        name: sidecar
+        volumeMounts:
+        - mountPath: /tmp/logs
+          name: logs
+        command:
+        - "/bin/sh"
+        - "-c"
+        - "tail -f /tmp/logs/access.log"
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - emptyDir: {}
+        name: logs
+status:
+  availableReplicas: 1
+  conditions:
+  - lastTransitionTime: "2021-02-27T19:20:38Z"
+    lastUpdateTime: "2021-02-27T19:20:38Z"
+    message: Deployment has minimum availability.
+    reason: MinimumReplicasAvailable
+    status: "True"
+    type: Available
+  - lastTransitionTime: "2021-02-27T19:20:36Z"
+    lastUpdateTime: "2021-02-27T19:20:38Z"
+    message: ReplicaSet "nginx-5bb7d5c6dd" has successfully progressed.
+    reason: NewReplicaSetAvailable
+    status: "True"
+    type: Progressing
+  observedGeneration: 1
+  readyReplicas: 1
+  replicas: 1
+  updatedReplicas: 1
+```
+
+## 7. Deployment Hacking
+
+### 1. Create a deployment of image nginx with 3 replicas and check the `kubect get events` that this caused.
+
+```
+$ kubectl create deployment nginx --image=nginx --replicas=3
+$ kubectl get events --sort-by='{.lastTimestamp}'
+
+...
+
+55s         Normal    ScalingReplicaSet        deployment/nginx              Scaled up replica set nginx-6799fc88d8 to 3
+54s         Normal    Pulling                  pod/nginx-6799fc88d8-rrhsg    Pulling image "nginx"
+54s         Normal    Pulling                  pod/nginx-6799fc88d8-8mf7n    Pulling image "nginx"
+54s         Normal    Pulling                  pod/nginx-6799fc88d8-pw6w9    Pulling image "nginx"
+53s         Normal    Pulled                   pod/nginx-6799fc88d8-pw6w9    Successfully pulled image "nginx" in 1.3015614s
+52s         Normal    Created                  pod/nginx-6799fc88d8-pw6w9    Created container nginx
+52s         Normal    Started                  pod/nginx-6799fc88d8-pw6w9    Started container nginx
+51s         Normal    Pulled                   pod/nginx-6799fc88d8-8mf7n    Successfully pulled image "nginx" in 2.5469564s
+51s         Normal    Started                  pod/nginx-6799fc88d8-8mf7n    Started container nginx
+51s         Normal    Created                  pod/nginx-6799fc88d8-8mf7n    Created container nginx
+50s         Normal    Pulled                   pod/nginx-6799fc88d8-rrhsg    Successfully pulled image "nginx" in 3.8175224s
+50s         Normal    Created                  pod/nginx-6799fc88d8-rrhsg    Created container nginx
+50s         Normal    Started                  pod/nginx-6799fc88d8-rrhsg    Started container nginx
+ ```
+
+### 2. Manually create a single pod of image nginx and try to smuggle it into the custody of the existing deployment (without changing the deployment configuration). Check `kubectl get events` for what happened.
+```
+$ kubectl run nginx --image=nginx
+$ kubectl get pods --show-labels
+
+NAME                     READY   STATUS    RESTARTS   AGE    LABELS
+nginx                    1/1     Running   0          8s     run=nginx
+nginx-6799fc88d8-8mf7n   1/1     Running   0          3m     app=nginx,pod-template-hash=6799fc88d8
+nginx-6799fc88d8-pw6w9   1/1     Running   0          3m     app=nginx,pod-template-hash=6799fc88d8
+nginx-6799fc88d8-rrhsg   1/1     Running   0          3m     app=nginx,pod-template-hash=6799fc88d8
+
+$ kubectl label pod nginx app=nginx
+$ kubectl label pod nginx pod-template-hash=6799fc88d8
+
+$ kubectl get pods --show-labels
+
+NAME                     READY   STATUS    RESTARTS   AGE     LABELS
+nginx                    1/1     Running   0          84s     app=nginx,run=nginx
+nginx-6799fc88d8-8mf7n   1/1     Running   0          4m16s   app=nginx,pod-template-hash=6799fc88d8
+nginx-6799fc88d8-pw6w9   1/1     Running   0          4m16s   app=nginx,pod-template-hash=6799fc88d8
+nginx-6799fc88d8-rrhsg   1/1     Running   0          4m16s   app=nginx,pod-template-hash=6799fc88d8
+
+NAME                     READY   STATUS    RESTARTS   AGE     LABELS
+nginx-6799fc88d8-8mf7n   1/1     Running   0          6m20s   app=nginx,pod-template-hash=6799fc88d8
+nginx-6799fc88d8-pw6w9   1/1     Running   0          6m20s   app=nginx,pod-template-hash=6799fc88d8
+nginx-6799fc88d8-rrhsg   1/1     Running   0          6m20s   app=nginx,pod-template-hash=6799fc88d8
+
+$ kubectl get events --sort-by='{.lastTimestamp}'
+
+...
+6m39s       Normal    Created                  pod/nginx-6799fc88d8-rrhsg    Created container nginx
+6m39s       Normal    Started                  pod/nginx-6799fc88d8-rrhsg    Started container nginx
+3m53s       Normal    Killing                  pod/nginx                     Stopping container nginx
+3m51s       Normal    Pulling                  pod/nginx                     Pulling image "nginx"
+3m49s       Normal    Started                  pod/nginx                     Started container nginx
+3m49s       Normal    Pulled                   pod/nginx                     Successfully pulled image "nginx" in 1.2828149s
+3m49s       Normal    Created                  pod/nginx                     Created container nginx
+54s         Normal    SuccessfulDelete         replicaset/nginx-6799fc88d8   Deleted pod: nginx
+53s         Normal    Killing                  pod/nginx                     Stopping container nginx
+```
+
+## 8. Security Contexts
+
+Scenario Setup:
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: bash
+  name: bash
+spec:
+  volumes:
+    - name: share
+      emptyDir: {}
+  containers:
+  - command:
+    - /bin/sh
+    - -c
+    - sleep 1d
+    image: bash
+    name: bash1
+    volumeMounts:
+      - name: share
+        mountPath: /tmp/share
+  - command:
+    - /bin/sh
+    - -c
+    - sleep 1d
+    image: bash
+    name: bash2
+    volumeMounts:
+      - name: share
+        mountPath: /tmp/share
+  restartPolicy: Never
+  ```
+
+We have one pod with two containers of image bash which share an emptyDir volume. Go get that pod running!
+
+### 1. Log into container `bash1` and create a file in the shared volume. View that file and its permissions via container `bash2`.
+```
+$ kubectl exec -it bash -c bash1 -- touch /tmp/share/file_test.txt
+$ kubectl exec -it bash -c bash2 -- ls -la /tmp/share/
+
+total 8
+drwxrwxrwx    2 root     root          4096 Feb 27 21:10 .
+drwxrwxrwt    1 root     root          4096 Feb 27 21:09 ..
+-rw-r--r--    1 root     root             0 Feb 27 21:10 file_test.txt
+```
+### 2. Create a pod wide Security Context so that programs on all containers are run as user 21. Apply the changes and repeat step 1. Check file permissions and owner.
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: bash
+  name: bash
+spec:
+  securityContext:  # Add
+    runAsUser: 21   # Add
+  volumes:
+    - name: share
+      emptyDir: {}
+  containers:
+  - command:
+    - /bin/sh
+    - -c
+    - sleep 1d
+    image: bash
+    name: bash1
+    volumeMounts:
+      - name: share
+        mountPath: /tmp/share
+  - command:
+    - /bin/sh
+    - -c
+    - sleep 1d
+    image: bash
+    name: bash2
+    volumeMounts:
+      - name: share
+        mountPath: /tmp/share
+  restartPolicy: Never
+
+$ kubectl exec -it bash -c bash1 -- touch /tmp/share/file_test.txt
+$ kubectl exec -it bash -c bash2 -- ls -la /tmp/share/
+
+total 8
+drwxrwxrwx    2 root     root          4096 Feb 27 21:20 .
+drwxrwxrwt    1 root     root          4096 Feb 27 21:19 ..
+-rw-r--r--    1 ftp      ftp              0 Feb 27 21:20 file_test.txt
+```
+
+### 3. Create a Security Context for container bash1 to run programs as root. Hence files should be created as root too. Repeat step 1. Check file permissions and owner. Try do delete the file container bash1 created from container bash2. Does it work?
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: bash
+  name: bash
+spec:
+  securityContext:
+    runAsUser: 21   
+  volumes:
+    - name: share
+      emptyDir: {}
+  containers:
+  - command:
+    - /bin/sh
+    - -c
+    - sleep 1d
+    image: bash
+    name: bash1
+    securityContext: # Add
+      runAsUser: 0   # Add
+    volumeMounts:
+      - name: share
+        mountPath: /tmp/share
+  - command:
+    - /bin/sh
+    - -c
+    - sleep 1d
+    image: bash
+    name: bash2
+    volumeMounts:
+      - name: share
+        mountPath: /tmp/share
+  restartPolicy: Never
+
+$ kubectl exec -it bash -c bash1 -- touch /tmp/share/file_test.txt
+$ kubectl exec -it bash -c bash2 -- ls -la /tmp/share/
+```
+
+## 9. Various Env Variables
+
+We have the following file containing environment variables:
+```
+CREDENTIAL_001=-bQ(ETLPGE[uT?6C;ed
+CREDENTIAL_002=C_;SU@ev7yg.8m6hNqS
+CREDENTIAL_003=ZA#$$-Ml6et&4?pKdvy
+CREDENTIAL_004=QlIc3$5*+SKsw==9=p{
+CREDENTIAL_005=C_2\a{]XD}1#9BpE[k?
+CREDENTIAL_006=9*KD8_w<);ozb:ns;JC
+CREDENTIAL_007=C[V$Eb5yQ)c~!..{LRT
+SETTING_USE_SEC=true
+SETTING_ALLOW_ANON=true
+SETTING_PREVENT_ADMIN_LOGIN=true
+```
+
+### 1. Create a Secret that contains all environment variables from that file
+```
+$ kubectl create secret generic my-secret --from-file=env.txt
+```
+### 2. Create a pod of image nginx that makes all Secret entries available as environment variables. For example usable by echo $CREDENTIAL_001 etc…
+```
+$ kubectl run nginx --image=nginx --dry-run=client -o yaml > output.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: nginx
+  name: nginx
+spec:
+  containers:
+  - image: nginx
+    envFrom:                # envFrom
+    - secretRef:
+        name: my-secret
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: {}
+
+$ kubectl apply -f output.yaml
+$ kubectl exec -it nginx -- /bin/sh  -c 'env'
+```
+
+## 10. ReplicaSet without Downtime
+
+Scenario set up. Run this pod
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-calc
+spec:
+  containers:
+  - command:
+    - sh
+    - -c
+    - echo "important calculation"; sleep 1d
+    image: nginx
+    name: pod-calc
+```
+
+### 1. Create a ReplicaSet for the given pod YAML above with 2 replicas always assured.
+```
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: rs-pod-calc
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      tier: calc
+  template:
+    metadata:
+      labels:
+        tier: calc
+    spec:
+      containers:
+      - command:
+        - sh
+        - -c
+        - echo 'important calculation'; sleep 1d
+        image: nginx
+        name: pod-calc
+
+$ kubectl get rs
+
+NAME          DESIRED   CURRENT   READY   AGE
+rs-pod-calc   2         2         2       41s
+
+$ kubectl get pods
+
+NAME                READY   STATUS    RESTARTS   AGE
+rs-pod-calc-h2jhm   1/1     Running   0          69s
+rs-pod-calc-rdzxm   1/1     Running   0          69s
+```
+
